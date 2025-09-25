@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""
+Main CLI interface for the autonomous delivery agent.
+"""
+import argparse
+import time
+from src.environment import GridWorld
+from src.agent import DeliveryAgent
+
+def main():
+    parser = argparse.ArgumentParser(description='Autonomous Delivery Agent')
+    parser.add_argument('--map', type=str, required=True, help='Map file path')
+    parser.add_argument('--planner', type=str, choices=['bfs', 'uniform', 'astar', 'hillclimb'],
+                       default='astar', help='Path planning algorithm')
+    parser.add_argument('--packages', type=str, help='Package deliveries (start_x,start_y,end_x,end_y;...)')
+    parser.add_argument('--demo', action='store_true', help='Run dynamic obstacle demo')
+    
+    args = parser.parse_args()
+    
+    # Load environment
+    env = GridWorld(10, 10)  # Default size, will be updated by map file
+    env.load_from_file(args.map)
+    
+    # Parse packages
+    if args.packages:
+        packages = args.packages.split(';')
+        for pkg in packages:
+            coords = [int(x) for x in pkg.split(',')]
+            env.add_package((coords[0], coords[1]), (coords[2], coords[3]))
+    
+    # Create agent
+    agent = DeliveryAgent(env, args.planner)
+    
+    print(f"Starting delivery agent with {args.planner} planner")
+    print(f"Map: {args.map}, Packages: {len(env.packages)}")
+    
+    # Run delivery mission
+    start_time = time.time()
+    results = agent.deliver_packages()
+    end_time = time.time()
+    
+    results['execution_time'] = end_time - start_time          
+    
+    # Print results
+    print("\n=== Delivery Results ===")
+    for key, value in results.items():
+        if key != 'paths':
+            print(f"{key}: {value}")
+    
+    # Dynamic replanning demo
+    if args.demo:
+        print("\n=== Dynamic Replanning Demo ===")
+        agent.dynamic_replan((5, 5), env.time_step + 1)
+
+if _name_ == "_main_":
+    main()
+
